@@ -4,7 +4,7 @@ import time
 from telebot import types
 import sqlite3
 
-bot = telebot.TeleBot('6917149428:AAG8uOv3QH4ldh59WFyuUX6qIgoCSnwY-zw')
+bot = telebot.TeleBot('Your_token')
 
 class Card:
 

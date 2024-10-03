@@ -1,6 +1,5 @@
 import telebot
 import random
-import time
 from telebot import types
 import sqlite3
 
@@ -71,16 +70,32 @@ class Dealer:
 
         return self.dl, self.dl_a
 
-def handle_end_game(message, result):
+def handle_end_game(message, result, amount):
+
+    conn = sqlite3.connect('dbq.sql')
+    cur = conn.cursor()
 
     if result == "win":
-        bot.send_message(message.chat.id, "You win")
+        cur.execute("UPDATE users SET amount = ? WHERE name = ? AND password = ?", (amount + 1, user_nold, user_wold))
+
+        bot.send_message(message.chat.id, f"You win, you have {amount + 1}")
 
     elif result == "draw":
-        bot.send_message(message.chat.id, "Draw")
+        bot.send_message(message.chat.id, f"Draw, you still have {amount}")
 
     else:
-        bot.send_message(message.chat.id, "You lose")
+        cur.execute("UPDATE users SET amount = ? WHERE name = ? AND password = ?", (amount - 1, user_nold, user_wold))
+        bot.send_message(message.chat.id, f"You lose, you have {amount - 1}")
+
+    cur.execute("SELECT amount FROM users WHERE name = ? AND password = ?", (user_nold, user_wold))
+    user_data = cur.fetchone()
+    amount = user_data[0]
+    if amount < 1:
+        cur.execute("UPDATE users SET amount = ? WHERE name = ? AND password = ?", (3, user_nold, user_wold))
+        bot.send_message(message.chat.id, "You have no points, so I give you 3 extra\nYour welcome!)")
+    conn.commit()
+    cur.close()
+    conn.close()
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     item = types.KeyboardButton("🎲 play(price = 1)")
@@ -152,13 +167,16 @@ def callback_data(callback):
         )
         bot.register_next_step_handler(callback.message, check_user_name)
 
-
+user_nold = 0
 def check_user_name(message):
+    global user_nold
     user_nold = message.text
     bot.send_message(message.chat.id, "Now write your password!")
     bot.register_next_step_handler(message, check_pass_word, user_nold)
 
+user_wold = 0
 def check_pass_word(message, user_nold):
+    global user_wold
     user_wold = message.text
     conn = sqlite3.connect('dbq.sql')
     cur = conn.cursor()
@@ -241,12 +259,18 @@ One more?""", reply_markup=markup)
 
 def sec_part(message):
     global dealers_cards
+    conn = sqlite3.connect('dbq.sql')
+    cur = conn.cursor()
+    cur.execute("SELECT amount FROM users WHERE name = ? AND password = ?", (user_nold, user_wold))
+    user_data = cur.fetchone()
+    amount = user_data[0]
+
     if message.text == "hit":
         c, l = player_take_card()
         bot.send_message(message.chat.id, f"{c}{l}")
         if p.pl > 21:
             p.pl, p.pl_a = 0, 0
-            handle_end_game(message, "lose")
+            handle_end_game(message, "lose", amount)
 
         bot.register_next_step_handler(message, sec_part)
 
@@ -258,21 +282,17 @@ def sec_part(message):
         bot.send_message(message.chat.id, f"Dealer has: {dealers_cards}")
 
         if d.dl > 21:
-            handle_end_game(message, "win")
+            handle_end_game(message, "win", amount)
 
         else:
             if p.pl_a > d.dl_a:
-                handle_end_game(message, "win")
+                handle_end_game(message, "win", amount)
 
             elif p.pl_a == d.dl_a:
-                handle_end_game(message, "draw")
+                handle_end_game(message, "draw", amount)
 
             elif p.pl_a < d.dl_a:
-                handle_end_game(message, "lose")
+                handle_end_game(message, "lose", amount)
 
-
-
-    else:
-        bot.send_message(message.chat.id, 'Please, choose just one option😢')
 
 bot.polling(non_stop = True)

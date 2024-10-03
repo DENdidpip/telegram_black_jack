@@ -70,6 +70,7 @@ class Dealer:
 
         return self.dl, self.dl_a
 
+#__function for final result__#
 def handle_end_game(message, result, amount):
 
     conn = sqlite3.connect('dbq.sql')
@@ -90,6 +91,7 @@ def handle_end_game(message, result, amount):
     cur.execute("SELECT amount FROM users WHERE name = ? AND password = ?", (user_nold, user_wold))
     user_data = cur.fetchone()
     amount = user_data[0]
+
     if amount < 1:
         cur.execute("UPDATE users SET amount = ? WHERE name = ? AND password = ?", (3, user_nold, user_wold))
         bot.send_message(message.chat.id, "You have no points, so I give you 3 extra\nYour welcome!)")
@@ -102,6 +104,7 @@ def handle_end_game(message, result, amount):
     markup.add(item)
     bot.send_message(message.chat.id, "Start a new game?", reply_markup=markup)
     bot.register_next_step_handler(message, game)
+
 @bot.message_handler(commands=['start'])
 def start(message):
 
@@ -116,6 +119,7 @@ def start(message):
                      "Hello, {0.first_name}!\nI'm - {1.first_name}, I exist to spend time and get some experience.".format(
                          message.from_user, bot.get_me()), reply_markup=markup)
 
+#___button "how to play"___#
 @bot.message_handler(content_types = ['text'])
 def start_or_learn(message):
     if message.chat.type == 'private':
@@ -149,6 +153,7 @@ def start_or_learn(message):
 
             bot.send_message(message.chat.id, 'Do you have an account?', reply_markup=markup)
 
+#___LOG IN and REGISTRATION___#
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_data(callback):
     if callback.data == 'havent':
@@ -188,14 +193,13 @@ def check_pass_word(message, user_nold):
         user_data = cur.fetchone()
         amount = user_data[0]
 
-        # Создание кнопки "play"
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         item1 = types.KeyboardButton("🎲 play(price = 1)")
         markup.add(item1)
 
         bot.send_message(message.chat.id, f"Login successful! Your amount: {amount}", reply_markup=markup)
-        # После успешной авторизации начинаем игру
         bot.register_next_step_handler(message, game, user_nold)
+
     else:
         bot.send_message(message.chat.id, "Invalid username or password.")
 
@@ -218,6 +222,7 @@ def pass_word(message, user_n):
     cur.close()
     conn.close()
 
+#___functions to take cards___#
 def dealer_take_card():
     c = Card()
     q, w = c.what_value(d.dl, d.dl_a)
@@ -230,9 +235,8 @@ def player_take_card():
     p.all_add(q, w)
     return c.num, c.mast
 
-
+#___game step by step___#
 @bot.message_handler(content_types=['text'])
-
 def game(message, user_nold=None):
     global d, p, dealers_cards
     if message.text == "🎲 play(price = 1)" :
@@ -240,13 +244,13 @@ def game(message, user_nold=None):
         d = Dealer()
         p = Player()
 
-        # ___first Player's and Dealer's cards___#
+        #___first Player's and Dealer's cards___#
         a, b = dealer_take_card()
         c, h = player_take_card()
         e, f = player_take_card()
         dealers_cards += f"{str(a)}{str(b)}"
 
-        # ___buttons to take(or not) next card___#
+        #___buttons to take(or not) next card___#
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         item1 = types.KeyboardButton("hit")
         item2 = types.KeyboardButton("stand")
@@ -257,6 +261,7 @@ You have: {c}{h},  {e}{f}
 One more?""", reply_markup=markup)
         bot.register_next_step_handler(message, sec_part)
 
+#___what is situation(win, lose, draw)
 def sec_part(message):
     global dealers_cards
     conn = sqlite3.connect('dbq.sql')
@@ -293,8 +298,6 @@ def sec_part(message):
 
             elif p.pl_a < d.dl_a:
                 handle_end_game(message, "lose", amount)
-
-
 
 bot.polling(non_stop = True)
 

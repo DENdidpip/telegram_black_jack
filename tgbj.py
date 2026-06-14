@@ -1,9 +1,12 @@
 import telebot
 import random
 from telebot import types
-import sqlite3
+from dotenv import load_dotenv
+import os
 
-bot = telebot.TeleBot('6917149428:AAG8uOv3QH4ldh59WFyuUX6qIgoCSnwY-zw')
+load_dotenv()
+TELEGRAM_API = os.getenv("TELEGRAM_API")
+bot = telebot.TeleBot(TELEGRAM_API)
 
 class Card:
 
